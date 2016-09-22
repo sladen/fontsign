@@ -224,3 +224,13 @@ implementation.  The webpage states this appeared in version 5:
 
 * `HKLM,"Software\Microsoft\Cryptography\OID\EncodingType 0\CryptDllFindOIDInfo\1.3.6.1.4.1.311.40.1!5"`
 * `HKLM,"Software\Microsoft\Cryptography\OID\EncodingType 1\CryptDllFormatObject\1.3.6.1.4.1.311.40.1"`
+
+# Handy recipes
+
+  ```shell
+  wget https://www.cs.auckland.ac.nz/~pgut001/dumpasn1.c
+  cc dumpasn1.c -o dumpasn1
+  ttx -t DSIG -o Ubuntu-R_dsig.ttx Ubuntu-R.ttf
+  openssl pkcs7 -inform PEM -outform DER -in Ubuntu-R_dsig.ttx -out Ubuntu-R_dsig.der
+  ./dumpasn1 Ubuntu-R_dsig.der > Ubuntu-R_dsig.asn1
+  ```
