@@ -24,12 +24,16 @@ fonts such as Google Fonts.
 
 Lets get some input.  Here's a starting point:
 
+  ```shell
   $ sha1sum */*.ttf
   b0ccad40a8a55a49186a35777390b3c441878770  Ubuntu_0.831/Ubuntu-R.ttf
+  ```
 
 Extract the DSIG table as binary (ttx always dumps an new XML too):
 
+  ```shell
   otfinfo -T DSIG Ubuntu_0.831/Ubuntu-R.ttf > Ubuntu-R.ttf.dsig
+  ```
 
 'strings' shows typical X.509 stuff, so likely the rest is wrapped
 ASN1 too, so lets hunt for the start.  Thankfully 'dumpasn1' has an
@@ -37,31 +41,38 @@ exit code which is the number of errors encountered when attempting
 the decode, so we can use that flag up plausible offsets and look for
 a low number, preferably zero:
 
+  ```shell
   for i in `seq 0 100` ; do echo SKIPPING $i ; \
     dd if=Ubuntu-R.ttf.dsig bs=1 skip=$i | dumpasn1 - && echo RESULT $i $? ; \
   done | less -S
+  ```
 
 Success with 28 octets of header skipped.  A cross-check with the
 Microsoft DSIG specification seems to be confirmed that this is probably
 correct:
 
-  https://www.microsoft.com/typography/otspec/dsig.htm
+* https://www.microsoft.com/typography/otspec/dsig.htm
 
 A this equal to one signature and signature heading [ie. the common case]:
 
-  (4+2+2)+1*(4+4+4)+1*(2+2+4) = 28 octet header
+  ```python
+  (4+2+2)+1*(4+4+4)+1*(2+2+4) = 28 # octet header
+  ```
 
 To get something human-readable '-a' is needed to dump to avoid string
 truncation.  '-l' helps with verbosity.  
 
+  ```shell
   dd if=Ubuntu-R.ttf.dsig bs=1 skip=28 | dumpasn1 -a -l - > dump.txt
+  ```
 
 This fully decodes with only one complaint about a malformed bit-string under
-.311.40.1.* ("Error: Spurious zero bits in bitstring.").  This OID is
+`.311.40.1.*` ("Error: Spurious zero bits in bitstring.").  This OID is
 not one that 'dumpasn1' already knows about, and is inside Microsoft's
 private usage area.  Lets go-hunting for everything that shows up in
-the dump under .311.*:
+the dump under `.311.*`:
 
+```
   1.3.6.1.4.1: Private usage area - http://www.alvestrand.no/objectid/1.3.6.1.4.1.html
    .311: Microsoft - http://www.alvestrand.no/objectid/1.3.6.1.4.1.311.html
     .2: Authenticode - https://support.microsoft.com/en-us/kb/287547
@@ -75,18 +86,23 @@ the dump under .311.*:
      .2.1: TIME_STAMP_REQUEST
     .40: Fonts - https://support.microsoft.com/en-us/kb/287547
      .1: ??
+```
 
 Yeah.  Helpful...
 
-Interestingly if one passes 'dampasn1 -r' (reverse bit-strings), then
-no error is shown.  With 'dampasn1 -hh' (hex dump) we can see raw octets:
+Interestingly if one passes `dampasn1 -r` (reverse bit-strings), then
+no error is shown.  With `dampasn1 -hh` (hex dump) we can see raw octets:
 
+```asn1
   <03 05 00 03 00 00 00>
+```
 
+```
   0x03 == bit string
   0x05 == payload octets
   0x00 == unused bits in last octet
   0x03 == 0000 0011 ... (so either 3, or 192, or 0x03000000 ?)
+```
 
 And this gives some insight: the sanity check warning is coming
 because in little endian only a single octet is required, and not a
@@ -98,6 +114,7 @@ However, this is from the Dalton Maag signing tool.  We can
 compare what this looks like in a Microsoft internally-signed
 font:
 
+  ```shell
   wget https://www.freedesktop.org/software/fontconfig/webfonts/webfonts.tar.gz
   tar zxvf webfonts.tar.gz
   cd msfonts/
@@ -105,10 +122,13 @@ font:
   for i in *.[Tt][Tt][Ff] ; do echo $i ; \
     otfinfo -T DSIG $i | dd bs=1 skip=28 | dumpasn1 -a - ; \
   done | grep -c '311 40'
+  ```
 
 which gives:
 
+  ```
   0
+  ```
 
 Therefore old signed Microsoft fonts do not have this unidentified
 entry.  Could it be OpenType only?
@@ -116,16 +136,18 @@ entry.  Could it be OpenType only?
 Or even *the* identifier for OpenType fonts that sets the magic icon
 on MS Windows.
 
-Another possibility is that it is being injected by the 'mssipotf.dll'
+Another possibility is that it is being injected by the `mssipotf.dll`
 sanity checker, as this is mentioned in:
 
-  https://www.microsoft.com/typography/developers/dsig/dsig.htm
+* https://www.microsoft.com/typography/developers/dsig/dsig.htm
 
 Grepping a large number of fonts:
 
+  ```shell
   for i in `find ~/ -iname \*.[ot]tf | grep -v ' '` ; do echo "$i" ; \
     otfinfo -T DSIG "$i" | dd bs=1 skip=28 status=noxfer | dumpasn1 -a - ; \
   done > foo.txt
+  ```
 
 and (so far) it only appears to be Dalton Maag signed fonts.  This includes
 a release of Aller signed in August 2008.
@@ -142,23 +164,23 @@ does not follow the full extent of the published specification
 Windows 2000 does not support the authentication and verification of
 each individual signature in a font. Our font-signing tool will only
 let one publisher sign a font."
-[cite](https://www.microsoft.com/en-us/Typography/DigitalSignaturesDefault.aspx#fonts)
+[[microsoft]](https://www.microsoft.com/en-us/Typography/DigitalSignaturesDefault.aspx#fonts)
 
 ### Microsoft official tools - Dsig
 
 * https://www.microsoft.com/en-us/Typography/dsigningtool.aspx (January 2003)
 
 Microsoft's 1999-era font signing tools don't appear to function correctly
-under Wine, always declaring a file's signature checking as 'FAILURE'.
+under Wine, always declaring a file's signature checking as "FAILURE".
 
 Following Microsoft's excellent endeavours to open up legacy
 intrastructure tools via Github, contact was attempted with a view to
-checking what the 'dsig.exe' was actually doing and/or getting the source opened up.
+checking what the `dsig.exe` was actually doing and/or getting the source opened up.
 
-One may need to locate a copy of 'mssign32.dll' in order to get any of
-the included tool to execute.  The 'makecert.exe' does appear to work;
+One may need to locate a copy of `mssign32.dll` in order to get any of
+the included tool to execute.  The `makecert.exe` does appear to work;
 the resulting keys and certificates it produces appear to be fairly standard,
-except for a 'Error: Object has zero length.' warning on the first (empty) object.
+except for a "Error: Object has zero length." warning on the first (empty) object.
 
 ## Dalton Maag tools - dsign
 
@@ -167,7 +189,7 @@ wrappers to allow interfacing from Pythong.  In September 2016 the
 technical team at Dalton Maag were helpful in offering insight into
 the inner working of this codebase.
 
-The codebase inserts the incorrectly-formed '1.3.6.1.4.1.311.40.1'
+The codebase inserts the incorrectly-formed `1.3.6.1.4.1.311.40.1` OID
 bitstring as a literal blob (sequence of hard-coded bytes).
 
 Whilst this perhaps clears up the *origin* of the blob, it suggests
@@ -178,8 +200,10 @@ two bit flags that are set in the middle of the blob.
 
 * http://old.fontlab.com/font-editor/fontographer/
 
-States "NEW! Support for OpenType digital signatures (DSIG)".  As this ships for
-MacOS X too, this would point to an internal implementation.
+This ships for MacOS X too, which would point to an internal
+implementation.  The webpage states this appeared in version 5:
+
+> NEW! Support for OpenType digital signatures (DSIG)
 
 ## Further reading
 
