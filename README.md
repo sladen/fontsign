@@ -228,4 +228,9 @@ implementation.  The webpage states this appeared in version 5:
 # Handy recipes
 
   ```shell
+  wget https://www.cs.auckland.ac.nz/~pgut001/dumpasn1.c
+  cc dumpasn1.c -o dumpasn1
+  ttx -t DSIG -o Ubuntu-R_dsig.ttx Ubuntu-R.ttf
+  openssl pkcs7 -inform PEM -outform DER -in Ubuntu-R_dsig.ttx -out Ubuntu-R_dsig.der
+  ./dumpasn1 Ubuntu-R_dsig.der > Ubuntu-R_dsig.asn1
   ```
