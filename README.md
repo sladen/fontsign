@@ -224,3 +224,8 @@ implementation.  The webpage states this appeared in version 5:
 
 * `HKLM,"Software\Microsoft\Cryptography\OID\EncodingType 0\CryptDllFindOIDInfo\1.3.6.1.4.1.311.40.1!5"`
 * `HKLM,"Software\Microsoft\Cryptography\OID\EncodingType 1\CryptDllFormatObject\1.3.6.1.4.1.311.40.1"`
+
+# Handy recipes
+
+  ```shell
+  ```
