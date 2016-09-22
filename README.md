@@ -53,14 +53,14 @@ correct:
 
 * https://www.microsoft.com/typography/otspec/dsig.htm
 
-A this equal to one signature and signature heading [ie. the common case]:
+As this equal to one signature and signature heading [ie. the common case]:
 
   ```python
   (4+2+2)+1*(4+4+4)+1*(2+2+4) = 28 # octet header
   ```
 
-To get something human-readable '-a' is needed to dump to avoid string
-truncation.  '-l' helps with verbosity.  
+To get something human-readable `-a` is needed to dump to avoid string
+truncation.  The `-l` helps with verbosity.  
 
   ```shell
   dd if=Ubuntu-R.ttf.dsig bs=1 skip=28 | dumpasn1 -a -l - > dump.txt
@@ -97,9 +97,11 @@ no error is shown.  With `dampasn1 -hh` (hex dump) we can see raw octets:
   <03 05 00 03 00 00 00>
 ```
 
+This decodes to a 32-bit bit-string; `(5-1) payload octets * 8 bits - 0 padding == 32 bits` per:
+
 ```
   0x03 == bit string
-  0x05 == payload octets
+  0x05 == payload octets following
   0x00 == unused bits in last octet
   0x03 == 0000 0011 ... (so either 3, or 192, or 0x03000000 ?)
 ```
@@ -159,12 +161,12 @@ a release of Aller signed in August 2008.
 2. Microsoft Windows 2000 Font Viewer. Based on what is written, this
 apparently displays a a red/green traffic based on validation of the
 signature.  Microsoft suggest that the implementation is limited and
-does not follow the full extent of the published specification
-"Although the OpenType font specification allows for countersigning,
-Windows 2000 does not support the authentication and verification of
-each individual signature in a font. Our font-signing tool will only
-let one publisher sign a font."
-[[microsoft]](https://www.microsoft.com/en-us/Typography/DigitalSignaturesDefault.aspx#fonts)
+does not follow the full extent of the published specification:
+> Although the OpenType font specification allows for countersigning,
+> Windows 2000 does not support the authentication and verification of
+> each individual signature in a font. Our font-signing tool will only
+> let one publisher sign a font.
+> [[microsoft]](https://www.microsoft.com/en-us/Typography/DigitalSignaturesDefault.aspx#fonts)
 
 ### Microsoft official tools - Dsig
 
@@ -185,7 +187,7 @@ except for a "Error: Object has zero length." warning on the first (empty) objec
 ## Dalton Maag tools - dsign
 
 Dalton Maag have an internal implementation written in C, with some
-wrappers to allow interfacing from Pythong.  In September 2016 the
+wrappers to allow interfacing from Python.  In September 2016 the
 technical team at Dalton Maag were helpful in offering insight into
 the inner working of this codebase.
 
